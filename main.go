@@ -1,21 +1,30 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"net/http"
+	"log"
 	"os"
+
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"github.com/cloudevents/sdk-go/v2/event"
 )
 
-// f-16 scout: low cost, zero garbage, 24/7 monitoring
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" { port = "8080" }
-
-	http.HandleFunc("/scout", func(w http.ResponseWriter, r *http.Request) {
-		// a2a: รับข้อมูลแล้ว "สะกิด" (nudge) ไปที่ gripen
-		fmt.Fprintf(w, "f-16: signal received. nudging gripen engine...")
-	})
-
-	http.ListenAndServe(":"+port, nil)
+func init() {
+	// ลงทะเบียนเอเจนต์ F-16: Scout Mode
+	functions.CloudEvent("F16Scout", f16ScoutLogic)
 }
 
+func f16ScoutLogic(ctx context.Context, e event.Event) error {
+	// 1. รับสัญญาน (Signal)
+	log.Println("🚀 f-16 scout: signal received.")
+
+	// 2. Snake Nudge Protocol: ตรวจสอบความถูกต้อง (Security Check)
+	// ตรงนี้เราจะใส่ logic ตรวจสอบ HMAC Signature ที่เราคุยกันไว้
+
+	// 3. Action: สะกิด (Nudge) Gripen Engine
+	// ในกรณีของ Serverless เราจะส่งข้อความไปยัง Pub/Sub Topic ของ Gripen
+	fmt.Println("🐍 Nudging Gripen engine via Snake Nudge Protocol...")
+
+	return nil
+}
