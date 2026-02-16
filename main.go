@@ -1,30 +1,43 @@
 package main
 
 import (
-	"context"
+	"bytes"
 	"fmt"
-	"log"
+	"net/http"
 	"os"
-
-	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
-	"github.com/cloudevents/sdk-go/v2/event"
+	"time"
 )
 
-func init() {
-	// ลงทะเบียนเอเจนต์ F-16: Scout Mode
-	functions.CloudEvent("F16Scout", f16ScoutLogic)
-}
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" { port = "8080" }
 
-func f16ScoutLogic(ctx context.Context, e event.Event) error {
-	// 1. รับสัญญาน (Signal)
-	log.Println("🚀 f-16 scout: signal received.")
+	// URL ของ Gripen (ถ้าใช้ Cloud Run ให้ใส่ URL ที่ได้จาก Google)
+	gripenURL := os.Getenv("GRIPEN_URL") 
+	if gripenURL == "" { gripenURL = "http://localhost:8081/process" }
 
-	// 2. Snake Nudge Protocol: ตรวจสอบความถูกต้อง (Security Check)
-	// ตรงนี้เราจะใส่ logic ตรวจสอบ HMAC Signature ที่เราคุยกันไว้
+	http.HandleFunc("/scout", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("🚀 F-16: Signal received. Preparing Dark-Relay nudge...")
 
-	// 3. Action: สะกิด (Nudge) Gripen Engine
-	// ในกรณีของ Serverless เราจะส่งข้อความไปยัง Pub/Sub Topic ของ Gripen
-	fmt.Println("🐍 Nudging Gripen engine via Snake Nudge Protocol...")
+		// สร้าง Payload ลับ (Snake Nudge Protocol)
+		jsonData := []byte(`{"agent": "F-16", "status": "active", "cmd": "TARGET_DETECTED"}`)
+		
+		// ยิง Request ไปหา Gripen พร้อมใส่รหัสลับใน Header
+		req, _ := http.NewRequest("POST", gripenURL, bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-ThitNuea-Auth", "DragonScale2026") // รหัสลับระหว่างเรา
 
-	return nil
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+
+		if err != nil {
+			fmt.Fprintf(w, "❌ Error: Gripen not responding: %v", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		fmt.Fprintf(w, "✅ F-16: Nudge success! Gripen status: %s", resp.Status)
+	})
+
+	http.ListenAndServe(":"+port, nil)
 }
