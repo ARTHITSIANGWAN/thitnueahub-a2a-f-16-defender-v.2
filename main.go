@@ -2,42 +2,53 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
-	"os"
 	"time"
 )
 
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" { port = "8080" }
-
-	// URL ของ Gripen (ถ้าใช้ Cloud Run ให้ใส่ URL ที่ได้จาก Google)
-	gripenURL := os.Getenv("GRIPEN_URL") 
-	if gripenURL == "" { gripenURL = "http://localhost:8081/process" }
-
-	http.HandleFunc("/scout", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("🚀 F-16: Signal received. Preparing Dark-Relay nudge...")
-
-		// สร้าง Payload ลับ (Snake Nudge Protocol)
-		jsonData := []byte(`{"agent": "F-16", "status": "active", "cmd": "TARGET_DETECTED"}`)
-		
-		// ยิง Request ไปหา Gripen พร้อมใส่รหัสลับใน Header
-		req, _ := http.NewRequest("POST", gripenURL, bytes.NewBuffer(jsonData))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-ThitNuea-Auth", "DragonScale2026") // รหัสลับระหว่างเรา
-
-		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Do(req)
-
-		if err != nil {
-			fmt.Fprintf(w, "❌ Error: Gripen not responding: %v", err)
-			return
+// เพิ่มระบบ Logging และ Error Handling ที่เข้มข้นขึ้น
+func dispatchWithSmartRetry(target string, msg AIDispatch) error {
+	maxRetries := 3
+	
+	for i := 0; i < maxRetries; i++ {
+		err := sendToBot(target, msg)
+		if err == nil {
+			fmt.Printf("✅ [Attempt %d] ส่งคำสั่ง %s สำเร็จ!\n", i+1, msg.Action)
+			return nil
 		}
-		defer resp.Body.Close()
 
-		fmt.Fprintf(w, "✅ F-16: Nudge success! Gripen status: %s", resp.Status)
-	})
+		// คำนวณเวลาการรอแบบ Exponential (2^i) เพื่อไม่ให้ยิงรัวเกินไป
+		// ครั้งที่ 1 รอ 2 วิ, ครั้งที่ 2 รอ 4 วิ, ครั้งที่ 3 รอ 8 วิ
+		waitTime := time.Duration(math.Pow(2, float64(i+1))) * time.Second
+		
+		fmt.Printf("⚠️ [Attempt %d] ล้มเหลว: %v. จะลองใหม่ในอีก %v...\n", i+1, err, waitTime)
+		time.Sleep(waitTime)
+	}
 
-	http.ListenAndServe(":"+port, nil)
+	return fmt.Errorf("❌ ระบบยอมแพ้: ไม่สามารถเชื่อมต่อกับ %s ได้หลังจากพยายาม %d ครั้ง", target, maxRetries)
+}
+
+// ปรับปรุงส่วนการส่งให้รองรับ Timeout
+func sendToBot(target string, msg AIDispatch) error {
+	jsonData, _ := json.Marshal(msg)
+	
+	// ตั้งค่า Timeout ป้องกันค้าง (สำคัญมากสำหรับ Security)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Post(target, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("server returned status: %s", resp.Status)
+	}
+
+	return nil
 }
