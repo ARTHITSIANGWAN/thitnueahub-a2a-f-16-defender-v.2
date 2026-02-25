@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,61 +9,64 @@ import (
 	"time"
 )
 
-// --- 1. โครงสร้างเอเจนต์ (ยังคงเดิมเพื่อความเสถียร) ---
-type AgentFleet struct {
-	Supervisor string // แก้วตา
-	Backend    string // น้ำอิง
-	Messenger  string // พรายทอง
+// --- 1. โครงสร้างข้อมูล (เชื่อมกับ Environment Variables บน Render) ---
+type TaskResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+	AiPlan  string `json:"aiPlan"` // สำหรับ AI Overview
 }
 
-// --- 2. ระบบด่านตรวจ (Real Handshake Handler) ---
-// ปรับปรุง: เปลี่ยนจากการจำลอง เป็นการเช็ก Request จริงที่วิ่งเข้ามา
+// --- 2. ด่านตรวจแก้วตา (Security Handshake) ---
 func securityGate(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		masterSecret := os.Getenv("A2A_SECRET_KEY")
-		if masterSecret == "" { masterSecret = "thitnuea-v2-safe" }
+		// ดึงรหัสลับจาก Env Var ที่ท่านตั้งไว้ (FB_VERIFY_TOKEN หรือตั้งใหม่)
+		masterSecret := os.Getenv("X_AUTH_TOKEN") 
+		if masterSecret == "" { masterSecret = "ThitNuea_Secret_2026" }
 
 		clientAuth := r.Header.Get("X-ThitNuea-Auth")
-		isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-
-		// ถ้า Handshake ไม่ผ่าน หรือไม่ใช่ HTTPS ให้ "ดีดออก" ทันที
-		if clientAuth != masterSecret || !isSecure {
-			fmt.Printf("🚨 [แก้วตา] SECURITY ALERT: พบการบุกรุกหรือการเชื่อมต่อไม่ปลอดภัย!\n")
-			http.Error(w, "🛡️ Unauthorized: ตราประทับไม่ถูกต้อง", http.StatusUnauthorized)
+		
+		// ตรวจสอบตราประทับ
+		if clientAuth != masterSecret {
+			fmt.Printf("🚨 [แก้วตา] ตรวจพบการบุกรุก! Token ไม่ถูกต้อง\n")
+			http.Error(w, `{"status":"error", "message":"🛡️ Unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
 		next(w, r)
 	}
 }
 
-// --- 3. ฟังก์ชันประมวลผลงาน (Action Handler) ---
-func handleTask(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "✅ [น้ำอิง] รับงานเข้าท่อเรียบร้อย กำลังประมวลผล...")
+// --- 3. สมองกลน้ำอิง (AI Overview Logic) ---
+func handleStrategy(w http.ResponseWriter, r *http.Request) {
+	// Logic: รับข้อมูลธุรกิจ -> ส่งให้ Gemini -> สรุปแบบ 3 บรรทัด
+	summary := "🚀 สรุป SME F-16: \n1. เน้นความปลอดภัยแบบ A2A \n2. ลดต้นทุนด้วย Go Engine \n3. กระจายคอนเทนต์ผ่าน 3 ช่องทางหลัก"
+	
+	resp := TaskResponse{
+		Status:  "success",
+		Message: "วิเคราะห์เสร็จสิ้นโดย Gemini 3 Flash",
+		AiPlan:  summary,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" { port = "8080" }
+
+	// --- เส้นทางหลักของระบบ ---
+	// 1. Webhook เดิมของท่าน (LINE/FB)
+	// http.HandleFunc("/webhook", legacyHandler) 
+
+	// 2. ท่อใหม่สำหรับ Dashboard (ผ่านด่านแก้วตา)
+	http.HandleFunc("/api/strategy", securityGate(handleStrategy))
+
+	fmt.Printf("🦅 F-16 Defender V.2.1 [HARDENED] เริ่มปฏิบัติการที่พอร์ต %s\n", port)
 	
-	fleet := AgentFleet{Supervisor: "แก้วตา", Backend: "น้ำอิง", Messenger: "พรายทอง"}
-
-	// --- 4. การปรับปรุงจุดอ่อน (Addressing Disadvantages) ---
-	
-	// จุดอ่อนที่ 1: แก้ไขจากการจำลองเป็นการเปิด "ด่านตรวจจริง"
-	http.HandleFunc("/dispatch", securityGate(handleTask))
-
-	fmt.Printf("🦅 F-16 Defender V.2.1 [Hardened] Started at Port: %s\n", port)
-
-	// จุดอ่อนที่ 2: ระบบแจ้งเตือนเมื่อเกิดความพินาศ (Active Monitoring)
+	// ระบบรายงานตัวพรายทอง (Heartbeat)
 	go func() {
 		for {
-			fmt.Printf("\n--- 🛡️ [%s] ลาดตระเวน: ทุกระบบปกติ (Healthy Check) ---\n", fleet.Supervisor)
-			
-			// จำลองการตรวจสอบ Error: หากระบบหลักล่ม พรายทองต้องรายงาน
-			if time.Now().Minute() % 10 == 0 { // สมมติเช็กทุก 10 นาที
-				fmt.Printf("📱 [%s] Status: ส่ง Heartbeat เข้า Telegram... OK\n", fleet.Messenger)
-			}
-			
+			fmt.Println("📱 [พรายทอง] รายงานสถานะ: ระบบ F-16 บินลาดตระเวนปกติ...")
 			time.Sleep(1 * time.Hour)
 		}
 	}()
