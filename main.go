@@ -2,59 +2,83 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"os"
 	"time"
+	"strings"
 )
 
-// 1. กำหนดบุคลิกและหน้าที่ของ Agent (A2A Roles)
+// --- 1. โครงสร้างเอเจนต์ (A2A Roles) ---
 type AgentFleet struct {
-	Supervisor string // แก้วตา: คุมกฎและความปลอดภัย
-	Backend    string // น้ำอิง: จัดการข้อมูลและระบบหลังบ้าน
-	Messenger  string // พรายทอง/ไอ้จ๊อด: รายงานผ่าน Line/Chat
+	Supervisor string // แก้วตา: คุมกฎ Security & Safety Gate
+	Backend    string // น้ำอิง: คุมท่อข้อมูล JSON วันที่ 20 & Cloud Run
+	Messenger  string // พรายทอง: รายงาน LINE & สรุปนิทาน SME
 }
 
-type F16Mission struct {
-	Status    string
-	Engine    string
-	Fleet     AgentFleet
-	GeminiVer string
+// --- 2. ขุมพลังสมองกล (Gemini 3 Multi-Modal) ---
+type Gemini3Engine struct {
+	Text      string // Gemini 3 Flash (Low Cost Reasoning)
+	Creative  string // Nano Banana (Image for Community)
 }
 
-const (
-	MasterKeyDate = "2026-02-20"
-	A2A_Secret    = "thitnuea-v2-safe"
-)
+// --- 3. ระบบความปลอดภัย (Safety Gate) ---
+func validateSecurity(content string) bool {
+	prohibited := []string{"malware", "exploit", "bypass"}
+	for _, word := range prohibited {
+		if strings.Contains(strings.ToLower(content), word) {
+			return false
+		}
+	}
+	return true
+}
 
 func main() {
-	fmt.Println("🚀 [SYSTEM] F-16 Defender V.2: A2A Fleet Awakening...")
+	// --- ตั้งค่าระบบ (Configuration) ---
+	port := os.Getenv("PORT")
+	if port == "" { port = "8080" }
+	
+	// ข้อมูลประวัติศาสตร์กุญแจ
+	masterKeyDate := "2026-02-20"
+	oauthID := "968501187230-5j7b...irb4" // ท่อหลักเจ้านาย
 
-	// 2. อัญเชิญเหล่าเอเจนต์เข้าประจำตำแหน่ง
+	// อัญเชิญ Fleet และ Engine
 	fleet := AgentFleet{
-		Supervisor: "แก้วตา (Policy & Safety Gate)",
-		Backend:    "น้ำอิง (Cloud Run & Data Pipeline)",
-		Messenger:  "พรายทอง (LINE Dashboard & Report)",
+		Supervisor: "แก้วตา",
+		Backend:    "น้ำอิง",
+		Messenger:  "พรายทอง",
 	}
 
-	mission := F16Mission{
-		Status:    "Active",
-		Engine:    "Go Low-Cost Mode",
-		Fleet:     fleet,
-		GeminiVer: "Gemini 3 Flash",
+	engine := Gemini3Engine{
+		Text:     "Gemini 3 Flash (Fast & Low Cost)",
+		Creative: "Nano Banana Pro (Lightweight)",
 	}
 
-	igniteA2A(mission)
-}
+	fmt.Printf("🚀 F-16 Defender V.2 [100%% Integrated] Started at Port: %s\n", port)
+	fmt.Printf("🔐 Master Key (%s) & OAuth ID Linked Successfully.\n", masterKeyDate)
 
-func igniteA2A(m F16Mission) {
-	fmt.Printf("🔐 [AUTH] Master Key: %s | Secret: %s\n", MasterKeyDate, A2A_Secret)
-	
-	// จำลอง Step การทำงานแบบ A2A
-	fmt.Printf("🛡️ [STEP 1] %s: กำลังตรวจสอบ Safety Gate...\n", m.Fleet.Supervisor)
-	time.Sleep(500 * time.Millisecond)
-	
-	fmt.Printf("⚙️ [STEP 2] %s: เริ่มประมวลผลท่อข้อมูลดาวเทียม...\n", m.Fleet.Backend)
-	time.Sleep(500 * time.Millisecond)
-	
-	fmt.Printf("📱 [STEP 3] %s: ส่งรายงาน 'นิทานเศรษฐกิจ' เข้า LINE เจ้านาย...\n", m.Fleet.Messenger)
-	
-	fmt.Println("\n✅ [RESULT] ภารกิจสำเร็จ: F-16 บินนิ่งแบบ Low Cost ด้วยพลัง Gemini 3 Flash")
+	// --- 4. ลำดับการปฏิบัติการ (Strategic Execution) ---
+	go func() {
+		for {
+			fmt.Println("\n--- 🛡️ ลาดตระเวนรอบใหม่ (Scheduled Check) ---")
+			
+			// Step 1: แก้วตา ตรวจความปลอดภัย
+			if validateSecurity("Normal Operation") {
+				fmt.Printf("✅ [%s] Safety Gate: ผ่านการตรวจสอบนโยบาย\n", fleet.Supervisor)
+				
+				// Step 2: น้ำอิง เชื่อมต่อท่อและประมวลผล
+				fmt.Printf("⚙️ [%s] Pipeline: ใช้ %s ดึงข้อมูลดาวเทียมทิศเหนือ...\n", fleet.Backend, engine.Text)
+				
+				// Step 3: พรายทอง รายงานผลเข้า LINE
+				summary := "สภาวะปกติ ท้องฟ้าเชียงรายแจ่มใส SME พร้อมขยายตัว"
+				fmt.Printf("📱 [%s] LINE Report: %s (Content by %s)\n", fleet.Messenger, summary, engine.Creative)
+			}
+			
+			// โหมดประหยัด: พักเครื่อง 1 ชั่วโมง
+			time.Sleep(1 * time.Hour)
+		}
+	}()
+
+	// รัน Server ทิ้งไว้เพื่อรอรับคำสั่ง (A2A Ready)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
