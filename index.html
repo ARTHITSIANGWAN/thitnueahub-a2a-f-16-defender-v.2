@@ -1,173 +1,107 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>F-16 DEFENDER V.2 | project-6e34f0b2</title>
-    <!-- โหลดเครื่องมือสำหรับสร้าง UI -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        /* ตั้งค่าล็อคหน้าจอให้ "นิ่ง" สำหรับมือถือ */
-        body, html {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            background-color: #020617;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            touch-action: none;
-        }
-        @keyframes scanline {
-            0% { transform: translateY(-100%); opacity: 0; }
-            50% { opacity: 0.2; }
-            100% { transform: translateY(100vh); opacity: 0; }
-        }
-        .hud-scan {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 2px;
-            background: #22d3ee;
-            box-shadow: 0 0 10px #22d3ee;
-            animation: scanline 4s linear infinite;
-            pointer-events: none;
-            z-index: 50;
-        }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+import React, { useState, useEffect } from 'react';
+import { Shield, Rocket, Activity, Lock, Unlock, Wifi } from 'lucide-react';
 
-    <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+const F16Remote = () => {
+  const [status, setStatus] = useState('STANDBY');
+  const [isLocked, setIsLocked] = useState(true);
+  const [lastAction, setLastAction] = useState('None');
+  const [ping, setPing] = useState(0);
 
-        // ฟังก์ชันช่วยดึงไอคอนจาก Lucide
-        const Icon = ({ name, size = 24, className = "" }) => {
-            const LucideIcon = lucide[name];
-            return LucideIcon ? <LucideIcon size={size} className={className} /> : null;
-        };
+  // จำลองการเช็คสัญญาณจากฐานทัพกรุงเทพฯ
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPing(Math.floor(Math.random() * 20) + 10); // 10-30ms สัญญาณไทยไวปรี๊ด!
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
-        const App = () => {
-            const [status, setStatus] = useState('STANDBY');
-            const [isLocked, setIsLocked] = useState(true);
-            const [ping, setPing] = useState(12);
-            const [logs, setLogs] = useState(['BKK_CORE_V1_READY', 'THN_VISION_ACTIVE']);
+  const handleIgnite = () => {
+    if (isLocked) return;
+    setStatus('IGNITING...');
+    setLastAction('Engine Started');
+    setTimeout(() => setStatus('F-16 ONLINE'), 1500);
+  };
 
-            // จำลองการเชื่อมต่อฐานทัพ
-            useEffect(() => {
-                const interval = setInterval(() => {
-                    setPing(Math.floor(Math.random() * 8) + 10);
-                }, 3000);
-                return () => clearInterval(interval);
-            }, []);
+  const toggleLock = () => {
+    setIsLocked(!isLocked);
+    setLastAction(isLocked ? 'Safety Released' : 'System Locked');
+  };
 
-            const addLog = (msg) => {
-                setLogs(prev => [msg, ...prev].slice(0, 3));
-            };
+  return (
+    <div className="min-h-screen bg-slate-900 text-cyan-400 p-6 font-mono flex flex-col items-center">
+      {/* Header */}
+      <div className="w-full max-w-md border-b-2 border-cyan-500 pb-4 mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tighter">F-16 DEFENDER V.2</h1>
+          <p className="text-xs text-cyan-600 italic">Project: project-6e34f0b2 (TH-BKK)</p>
+        </div>
+        <div className="flex flex-col items-end">
+          <div className="flex items-center gap-1 text-[10px]">
+            <Wifi size={10} /> {ping}ms
+          </div>
+          <div className="text-[10px] text-green-500 underline">LAMIA-SECURED</div>
+        </div>
+      </div>
 
-            const handleIgnite = () => {
-                if (isLocked) return;
-                setStatus('IGNITING...');
-                addLog('IGNITION_SEQUENCE_START');
-                setTimeout(() => {
-                    setStatus('F-16 ONLINE');
-                    addLog('ENGINE_SYSTEM_READY');
-                }, 2000);
-            };
+      {/* Main Display */}
+      <div className="w-full max-w-md bg-black/50 border-2 border-cyan-900 rounded-xl p-8 mb-8 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase">System Status</span>
+            <span className={`text-xl font-bold ${status === 'STANDBY' ? 'text-yellow-500' : 'text-green-500 animate-pulse'}`}>
+              {status}
+            </span>
+          </div>
+          <Activity className={status !== 'STANDBY' ? 'animate-bounce' : ''} />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div className="bg-slate-800/50 p-3 rounded border border-slate-700">
+            <span className="block text-[8px] uppercase">Gemini Brain</span>
+            <span className="text-xs font-bold text-white uppercase">Active</span>
+          </div>
+          <div className="bg-slate-800/50 p-3 rounded border border-slate-700">
+            <span className="block text-[8px] uppercase">Target Lock</span>
+            <span className="text-xs font-bold text-white uppercase">Searching</span>
+          </div>
+        </div>
+      </div>
 
-            return (
-                <div className="flex flex-col h-[100dvh] w-full text-cyan-400 font-mono p-6 relative overflow-hidden">
-                    <div className="hud-scan"></div>
+      {/* Controls */}
+      <div className="w-full max-w-md space-y-6">
+        <button 
+          onClick={toggleLock}
+          className={`w-full py-6 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-95 border-2 ${isLocked ? 'bg-red-900/20 border-red-600' : 'bg-green-900/20 border-green-600'}`}
+        >
+          {isLocked ? <Lock size={32} className="text-red-500" /> : <Unlock size={32} className="text-green-500" />}
+          <span className="mt-2 text-xs font-bold">{isLocked ? 'UNLOCK SAFETY' : 'SAFETY OFF'}</span>
+        </button>
 
-                    {/* Header */}
-                    <header className="flex justify-between items-end border-b border-cyan-900/50 pb-4 shrink-0 z-10">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <Icon name="Cpu" size={16} className="text-cyan-500 animate-pulse" />
-                                <h1 className="text-xl font-black tracking-tighter uppercase leading-none">F-16 Remote</h1>
-                            </div>
-                            <p className="text-[8px] text-cyan-800 font-bold mt-1 tracking-widest uppercase">ID: project-6e34f0b2</p>
-                        </div>
-                        <div className="text-right flex flex-col items-end">
-                            <div className="flex items-center gap-1 text-[10px] font-bold bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">
-                                <Icon name="Wifi" size={10} className="text-emerald-500" />
-                                <span>{ping}MS</span>
-                            </div>
-                            <span className="text-[8px] mt-1 text-cyan-900 font-bold uppercase tracking-tighter">Auth: SAMLLSUNGLL.11</span>
-                        </div>
-                    </header>
+        <button 
+          disabled={isLocked}
+          onClick={handleIgnite}
+          className={`w-full py-8 rounded-full flex flex-col items-center justify-center transition-all ${isLocked ? 'bg-slate-800 text-slate-600 grayscale' : 'bg-cyan-600 text-white shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-90'}`}
+        >
+          <Rocket size={48} />
+          <span className="mt-2 text-lg font-black tracking-widest">IGNITE V.2</span>
+        </button>
+      </div>
 
-                    {/* Center HUD */}
-                    <main className="flex-grow flex flex-col justify-center items-center z-10">
-                        <div className="relative w-full max-w-[220px] aspect-square flex items-center justify-center">
-                            <div className={`absolute inset-0 border-2 rounded-full border-cyan-500/10 ${status !== 'STANDBY' ? 'animate-[spin_10s_linear_infinite]' : ''}`}></div>
-                            <div className={`absolute inset-4 border border-cyan-500/5 rounded-full`}></div>
-                            <div className="text-center">
-                                <Icon name="Target" size={42} className={`mx-auto mb-2 ${status !== 'STANDBY' ? 'text-cyan-400' : 'text-slate-800'}`} />
-                                <div className={`text-3xl font-black tracking-widest ${status === 'STANDBY' ? 'text-slate-700' : 'text-cyan-400 animate-pulse'}`}>
-                                    {status}
-                                </div>
-                                <div className="text-[8px] text-cyan-900 mt-1 uppercase font-black">Stable Link V.2</div>
-                            </div>
-                        </div>
-                        
-                        <div className="w-full grid grid-cols-3 gap-2 mt-10">
-                            {[
-                                { l: 'CORE', v: 'SYNC', i: 'Zap' },
-                                { l: 'RADAR', v: 'LOCK', i: 'Crosshair' },
-                                { l: 'BATT', v: '98%', i: 'Shield' }
-                            ].map((item, idx) => (
-                                <div key={idx} className="bg-slate-900/40 border border-cyan-900/30 p-2 rounded-lg text-center">
-                                    <Icon name={item.i} size={10} className="mx-auto text-cyan-800 mb-1" />
-                                    <div className="text-[7px] text-cyan-800 uppercase font-black">{item.l}</div>
-                                    <div className="text-[10px] font-bold text-white uppercase tracking-tighter">{item.v}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </main>
+      {/* Footer Logs */}
+      <div className="mt-auto w-full max-w-md bg-slate-950 p-3 rounded border border-cyan-900 text-[10px]">
+        <div className="text-cyan-800">COMMAND LOGS:</div>
+        <div className="flex justify-between">
+          <span>{'>'} LAST_ACTION:</span>
+          <span className="text-white uppercase">{lastAction}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>{'>'} AUTH_LEVEL:</span>
+          <span className="text-white underline">SAMLLSUNGLL.11</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-                    {/* Fixed Controls */}
-                    <footer className="space-y-4 shrink-0 pb-10 z-10">
-                        <button 
-                            onClick={() => { setIsLocked(!isLocked); addLog(isLocked ? 'SAFETY_OFF' : 'SAFETY_ON'); }}
-                            className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-95 border-2 ${isLocked ? 'bg-red-950/10 border-red-900/40 text-red-600' : 'bg-emerald-950/10 border-emerald-900/40 text-emerald-500'}`}
-                        >
-                            <Icon name={isLocked ? 'Lock' : 'Unlock'} size={20} />
-                            <span className="text-[10px] font-black tracking-[0.2em] uppercase">{isLocked ? 'Master Lock' : 'Override Active'}</span>
-                        </button>
-
-                        <button 
-                            disabled={isLocked}
-                            onClick={handleIgnite}
-                            className={`w-full py-8 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-[0.96] ${isLocked ? 'bg-slate-900 text-slate-700 border border-slate-800' : 'bg-gradient-to-t from-cyan-600 to-cyan-400 text-slate-950 shadow-[0_0_40px_rgba(34,211,238,0.3)]'}`}
-                        >
-                            <Icon name="Rocket" size={32} className={status === 'IGNITING...' ? 'animate-bounce' : ''} />
-                            <span className="mt-1 text-xs font-black tracking-[0.5em] uppercase">Engage Ignite</span>
-                        </button>
-
-                        <div className="bg-black/60 border border-cyan-900/30 p-2 rounded-lg overflow-hidden">
-                            {logs.map((log, i) => (
-                                <div key={i} className={`text-[8px] flex justify-between font-bold leading-relaxed ${i === 0 ? 'text-white' : 'text-cyan-900'}`}>
-                                    <span>{'>'} {log}</span>
-                                    <span>{new Date().toLocaleTimeString()}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </footer>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
-
-  
+export default F16Remote;
+              
