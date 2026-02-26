@@ -3,25 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>F-16 DEFENDER V.2</title>
-    <!-- โหลดเฉพาะสิ่งที่จำเป็นจริงๆ -->
+    <title>F-16 V.2 | project-6e34f0b2</title>
+
+    <!-- 1. ตั้งค่าความเป็น "แอปจริง" (Web App Manifest) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="F-16 Remote">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#020617">
+
+    <!-- 2. ไอคอนแอป (ใช้รูปโล่ห์สีฟ้าจาร์วิส) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322d3ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'%3E%3C/path%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23020617' stroke='%2322d3ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' rx='4' fill='%23020617'/%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' stroke='%2322d3ee'/%3E%3C/svg%3E">
+
+    <!-- โหลดเครื่องมือสร้าง UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <style>
+        :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
         body, html {
             margin: 0; padding: 0; overflow: hidden; position: fixed;
             width: 100%; height: 100%; background-color: #020617;
-            color: #22d3ee; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none;
+            color: #22d3ee; font-family: ui-monospace, monospace;
+            -webkit-touch-callout: none; -webkit-user-select: none;
+            user-select: none; touch-action: none;
         }
         @keyframes scanline {
-            0% { transform: translateY(-20vh); opacity: 0; }
+            0% { transform: translateY(-100%); opacity: 0; }
             50% { opacity: 0.1; }
-            100% { transform: translateY(100vh); opacity: 0; }
+            100% { transform: translateY(100dvh); opacity: 0; }
         }
-        .scan-effect {
+        .hud-scan {
             position: absolute; top: 0; left: 0; width: 100%; height: 2px;
             background: #22d3ee; box-shadow: 0 0 10px #22d3ee;
             animation: scanline 4s linear infinite; pointer-events: none; z-index: 50;
@@ -30,63 +45,53 @@
 </head>
 <body>
     <div id="root">
-        <!-- แสดงข้อความรอโหลด ถ้า React ยังไม่ทำงาน -->
-        <div style="display:flex; height:100vh; align-items:center; justify-content:center; color:#164e63; font-size:12px;">
-            SYSTEM INITIALIZING...
+        <div style="display:flex; height:100vh; align-items:center; justify-content:center; color:#164e63; font-size:10px; letter-spacing:0.2em;">
+            ENCRYPTING_LINK...
         </div>
     </div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ไอคอนแบบฝังในโค้ด (SVG) เพื่อไม่ให้หน้าจอดำถ้าเน็ตช้า
         const Icons = {
-            Rocket: () => (
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></svg>
-            ),
-            Lock: () => (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            ),
-            Unlock: () => (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-            ),
-            Wifi: () => (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h.01"/><path d="M2 10s3-3 10-3 10 3 10 3"/><path d="M5 14s2-2 7-2 7 2 7 2"/><path d="M8 18s1-1 4-1 4 1 4 1"/></svg>
-            )
+            Rocket: () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></svg>,
+            Lock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+            Unlock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
+            Wifi: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h.01"/><path d="M2 10s3-3 10-3 10 3 10 3"/><path d="M5 14s2-2 7-2 7 2 7 2"/><path d="M8 18s1-1 4-1 4 1 4 1"/></svg>
         };
 
         const App = () => {
             const [status, setStatus] = useState('STANDBY');
             const [isLocked, setIsLocked] = useState(true);
             const [ping, setPing] = useState(12);
-            const [logs, setLogs] = useState(['BKK_CORE_V1_READY', 'THN_VISION_LINKED']);
+            const [logs, setLogs] = useState(['THN_CORE_V1_ESTABLISHED', 'SECURE_CHANNEL_READY']);
 
             useEffect(() => {
                 const interval = setInterval(() => {
-                    setPing(Math.floor(Math.random() * 5) + 10);
-                }, 3000);
+                    setPing(Math.floor(Math.random() * 5) + 8);
+                }, 4000);
                 return () => clearInterval(interval);
             }, []);
 
             const handleIgnite = () => {
                 if (isLocked) return;
                 setStatus('IGNITING...');
-                setLogs(prev => ['IGNITION_START', ...prev].slice(0, 3));
+                setLogs(prev => ['IGNITION_INITIATED', ...prev].slice(0, 3));
                 setTimeout(() => {
                     setStatus('F-16 ONLINE');
-                    setLogs(prev => ['SYSTEM_OPTIMAL', ...prev].slice(0, 3));
+                    setLogs(prev => ['ENG_STB_OPTIMAL_V2', ...prev].slice(0, 3));
                 }, 2000);
             };
 
             return (
-                <div className="flex flex-col h-[100dvh] w-full text-cyan-400 p-6 relative bg-slate-950 overflow-hidden">
-                    <div className="scan-effect"></div>
+                <div className="flex flex-col h-[100dvh] w-full text-cyan-400 p-6 relative bg-slate-950 overflow-hidden font-mono">
+                    <div className="hud-scan"></div>
 
                     {/* Header */}
-                    <header className="flex justify-between items-end border-b border-cyan-900/40 pb-4 shrink-0 z-10 pt-[env(safe-area-inset-top)]">
+                    <header className="flex justify-between items-end border-b border-cyan-900/40 pb-4 shrink-0 z-10 pt-[var(--sat)]">
                         <div>
-                            <h1 className="text-xl font-black tracking-tighter uppercase leading-none">F-16 REMOTE</h1>
-                            <p className="text-[8px] text-cyan-800 font-bold mt-1 tracking-widest uppercase">ID: project-6e34f0b2</p>
+                            <h1 className="text-xl font-black tracking-tighter uppercase leading-none">F-16 Remote</h1>
+                            <p className="text-[8px] text-cyan-800 font-bold mt-1 tracking-widest uppercase italic">Node: BKK_CORE</p>
                         </div>
                         <div className="text-right flex flex-col items-end">
                             <div className="flex items-center gap-1 text-[10px] font-bold bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">
@@ -97,15 +102,15 @@
                         </div>
                     </header>
 
-                    {/* Dashboard */}
+                    {/* Central Display */}
                     <main className="flex-grow flex flex-col justify-center items-center z-10">
-                        <div className="relative w-full max-w-[180px] aspect-square flex items-center justify-center">
-                            <div className={`absolute inset-0 border-2 rounded-full border-cyan-500/10 ${status !== 'STANDBY' ? 'animate-[spin_10s_linear_infinite]' : ''}`}></div>
+                        <div className="relative w-full max-w-[200px] aspect-square flex items-center justify-center">
+                            <div className={`absolute inset-0 border-2 rounded-full border-cyan-500/10 ${status !== 'STANDBY' ? 'animate-[spin_15s_linear_infinite]' : ''}`}></div>
                             <div className="text-center">
-                                <div className={`mb-2 flex justify-center ${status !== 'STANDBY' ? 'text-cyan-400 animate-pulse' : 'text-slate-800'}`}>
-                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                <div className={`mb-3 flex justify-center ${status !== 'STANDBY' ? 'text-cyan-400 animate-pulse' : 'text-slate-800'}`}>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
                                 </div>
-                                <div className={`text-3xl font-black tracking-widest ${status === 'STANDBY' ? 'text-slate-700' : 'text-cyan-400'}`}>
+                                <div className={`text-4xl font-black tracking-widest leading-none uppercase ${status === 'STANDBY' ? 'text-slate-700' : 'text-cyan-400'}`}>
                                     {status}
                                 </div>
                             </div>
@@ -113,26 +118,29 @@
                     </main>
 
                     {/* Controls */}
-                    <footer className="space-y-4 shrink-0 pb-[calc(env(safe-area-inset-bottom)+20px)] z-10">
+                    <footer className="space-y-4 shrink-0 pb-[calc(var(--sab)+24px)] z-10">
                         <button 
                             onClick={() => setIsLocked(!isLocked)}
-                            className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-95 border-2 ${isLocked ? 'bg-red-950/10 border-red-900/40 text-red-600' : 'bg-emerald-950/10 border-emerald-900/40 text-emerald-500'}`}
+                            className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.97] border-2 shadow-inner
+                                ${isLocked ? 'bg-red-950/10 border-red-900/40 text-red-600' : 'bg-emerald-950/10 border-emerald-900/40 text-emerald-500'}`}
                         >
                             {isLocked ? <Icons.Lock /> : <Icons.Unlock />}
-                            <span className="text-[10px] font-black tracking-[0.2em] uppercase">{isLocked ? 'Safety Locked' : 'Safety Bypass'}</span>
+                            <span className="text-[10px] font-black tracking-[0.2em] uppercase">{isLocked ? 'Safety: Lock' : 'Safety: Bypass'}</span>
                         </button>
 
                         <button 
                             disabled={isLocked}
                             onClick={handleIgnite}
-                            className={`w-full py-8 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-[0.96] ${isLocked ? 'bg-slate-900 text-slate-700 border border-slate-800' : 'bg-cyan-500 text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.3)]'}`}
+                            className={`w-full py-8 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-[0.95]
+                                ${isLocked ? 'bg-slate-900 text-slate-700 border border-slate-800' : 'bg-cyan-600 text-slate-950 shadow-[0_0_40px_rgba(34,211,238,0.3)]'}`}
                         >
                             <div className={status === 'IGNITING...' ? 'animate-bounce' : ''}>
                                 <Icons.Rocket />
                             </div>
-                            <span className="mt-1 text-xs font-black tracking-[0.4em] uppercase">Engage Engine</span>
+                            <span className="mt-2 text-sm font-black tracking-[0.6em] uppercase">Start Engine</span>
                         </button>
 
+                        {/* Logs */}
                         <div className="bg-black/60 border border-cyan-900/30 p-2 rounded-lg">
                             {logs.map((log, i) => (
                                 <div key={i} className={`text-[8px] flex justify-between font-bold leading-relaxed ${i === 0 ? 'text-white' : 'text-cyan-900'}`}>
@@ -152,3 +160,4 @@
 </body>
 </html>
 
+    
