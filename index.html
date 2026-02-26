@@ -3,18 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>F-16 Remote | project-6e34f0b2</title>
+    <title>F-16 ADVANCED | thitnueahub</title>
 
-    <!-- 1. ตั้งค่า PWA เพื่อให้เป็นแอปจริง (ซ่อนแถบ Chrome) -->
+    <!-- PWA & Mobile Optimization -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-title" content="F-16 Remote">
     <meta name="theme-color" content="#020617">
 
-    <!-- 2. ไอคอนแอป (ฝังรูปโล่สีฟ้า) -->
+    <!-- Icons & Styling -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322d3ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'%3E%3C/path%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23020617' stroke='%2322d3ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' rx='4' fill='%23020617'/%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' stroke='%2322d3ee'/%3E%3C/svg%3E">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -28,105 +26,171 @@
             color: #22d3ee; font-family: ui-monospace, SFMono-Regular, monospace;
             -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none;
         }
-        @keyframes scanline {
-            0% { transform: translateY(-100%); opacity: 0; }
-            50% { opacity: 0.1; }
-            100% { transform: translateY(100dvh); opacity: 0; }
-        }
-        .hud-scan {
-            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-            background: #22d3ee; box-shadow: 0 0 10px #22d3ee;
-            animation: scanline 4s linear infinite; pointer-events: none; z-index: 50;
-        }
+        @keyframes radar-scan { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .radar-line { animation: radar-scan 4s linear infinite; }
+        .tab-active { color: #22d3ee; border-bottom: 2px solid #22d3ee; background: rgba(34, 211, 238, 0.05); }
+        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(34, 211, 238, 0.1); }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div style="display:flex; height:100vh; align-items:center; justify-content:center; color:#164e63; font-size:10px; letter-spacing:0.2em;">
-            SYSTEM_ENCRYPTING...
-        </div>
-    </div>
+    <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
         const Icons = {
-            Rocket: () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></svg>,
-            Lock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
-            Unlock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
-            Wifi: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h.01"/><path d="M2 10s3-3 10-3 10 3 10 3"/><path d="M5 14s2-2 7-2 7 2 7 2"/><path d="M8 18s1-1 4-1 4 1 4 1"/></svg>
+            Rocket: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></svg>,
+            Lock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+            Unlock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
+            Github: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.28 1.15-.28 2.35 0 3.5-.73 1.02-1.08 2.25-1 3.5 0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-3-7-3"/></svg>,
+            Heart: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>,
+            Alert: () => <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         };
 
         const App = () => {
+            const [activeTab, setActiveTab] = useState('cockpit');
             const [status, setStatus] = useState('STANDBY');
             const [isLocked, setIsLocked] = useState(true);
-            const [ping, setPing] = useState(12);
-            const [logs, setLogs] = useState(['THN_CORE_V1_ESTABLISHED', 'SECURE_CHANNEL_READY']);
+            const [isMember, setIsMember] = useState(false); // ระบบจำลองสถานะสมาชิก
+            const [showModal, setShowModal] = useState(false);
+            const [ping, setPing] = useState(15);
 
             useEffect(() => {
-                const interval = setInterval(() => {
-                    setPing(Math.floor(Math.random() * 5) + 8);
-                }, 4000);
+                const interval = setInterval(() => setPing(Math.floor(Math.random() * 5) + 12), 5000);
                 return () => clearInterval(interval);
             }, []);
 
+            const triggerAuthAction = (action) => {
+                if (!isMember) {
+                    setShowModal(true);
+                    return;
+                }
+                action();
+            };
+
             const handleIgnite = () => {
-                if (isLocked) return;
                 setStatus('IGNITING...');
-                setLogs(prev => ['IGNITION_INITIATED', ...prev].slice(0, 3));
-                setTimeout(() => {
-                    setStatus('F-16 ONLINE');
-                    setLogs(prev => ['ENG_STB_OPTIMAL_V2', ...prev].slice(0, 3));
-                }, 2000);
+                setTimeout(() => setStatus('F-16 ONLINE'), 2000);
             };
 
             return (
-                <div className="flex flex-col h-[100dvh] w-full text-cyan-400 p-6 relative bg-slate-950 overflow-hidden font-mono">
-                    <div className="hud-scan"></div>
-                    <header className="flex justify-between items-end border-b border-cyan-900/40 pb-4 shrink-0 z-10 pt-[var(--sat)]">
-                        <div>
-                            <h1 className="text-xl font-black tracking-tighter uppercase leading-none">F-16 Remote</h1>
-                            <p className="text-[8px] text-cyan-800 font-bold mt-1 tracking-widest uppercase italic uppercase">ID: project-6e34f0b2</p>
-                        </div>
-                        <div className="text-right flex flex-col items-end">
-                            <div className="flex items-center gap-1 text-[10px] font-bold bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">
-                                <Icons.Wifi />
-                                <span>{ping}MS</span>
+                <div className="flex flex-col h-[100dvh] w-full bg-slate-950 text-cyan-400 font-mono relative overflow-hidden">
+                    
+                    {/* Header */}
+                    <header className="px-6 pt-[var(--sat)] pb-4 border-b border-cyan-900/40 shrink-0 z-40 bg-slate-950/80 backdrop-blur-md">
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <h1 className="text-xl font-black tracking-tighter">F-16 DEFENDER</h1>
+                                <p className="text-[8px] text-cyan-800 font-bold uppercase tracking-widest leading-none">ID: project-6e34f0b2</p>
                             </div>
-                            <span className="text-[8px] mt-1 text-cyan-900 font-bold tracking-tighter uppercase">Auth: SAMLLSUNGLL.11</span>
+                            <div className="text-right">
+                                <div className="text-[10px] font-bold bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">
+                                    {ping}MS | {isMember ? 'PREMIUM' : 'GUEST'}
+                                </div>
+                            </div>
                         </div>
                     </header>
-                    <main className="flex-grow flex flex-col justify-center items-center z-10">
-                        <div className="relative w-full max-w-[200px] aspect-square flex items-center justify-center border-4 border-cyan-900/10 rounded-full">
-                            <div className={`absolute inset-0 border-2 rounded-full border-cyan-500/10 ${status !== 'STANDBY' ? 'animate-[spin_15s_linear_infinite]' : ''}`}></div>
-                            <div className="text-center">
-                                <div className={`mb-3 flex justify-center ${status !== 'STANDBY' ? 'text-cyan-400 animate-pulse' : 'text-slate-800'}`}>
-                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+
+                    {/* Main View Area */}
+                    <main className="flex-grow relative overflow-hidden">
+                        
+                        {/* Cockpit View */}
+                        {activeTab === 'cockpit' && (
+                            <div className="h-full p-6 flex flex-col justify-center animate-in fade-in duration-300">
+                                <div className="relative w-full aspect-square max-w-[200px] mx-auto flex items-center justify-center">
+                                    <div className={`absolute inset-0 border-2 rounded-full border-cyan-500/10 ${status !== 'STANDBY' ? 'animate-spin' : ''}`} style={{animationDuration: '10s'}}></div>
+                                    <div className="text-center z-10">
+                                        <div className={`text-3xl font-black tracking-widest ${status === 'STANDBY' ? 'text-slate-700' : 'text-cyan-400 animate-pulse'}`}>
+                                            {status}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className={`text-4xl font-black tracking-widest uppercase ${status === 'STANDBY' ? 'text-slate-700' : 'text-cyan-400'}`}>
-                                    {status}
+
+                                <div className="mt-12 space-y-4">
+                                    <button 
+                                        onClick={() => triggerAuthAction(() => setIsLocked(!isLocked))}
+                                        className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 border-2 transition-all active:scale-95 ${isLocked ? 'bg-red-950/10 border-red-900/40 text-red-600' : 'bg-emerald-950/10 border-emerald-900/40 text-emerald-500'}`}
+                                    >
+                                        <Icons.Lock />
+                                        <span className="text-[10px] font-black tracking-[0.2em] uppercase">{isLocked ? 'Safety Locked' : 'Safety Bypass'}</span>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => triggerAuthAction(handleIgnite)}
+                                        className={`w-full py-8 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-[0.96] ${isLocked ? 'bg-slate-900 text-slate-700 border border-slate-800' : 'bg-cyan-600 text-slate-950 shadow-[0_0_40px_rgba(34,211,238,0.3)]'}`}
+                                    >
+                                        <Icons.Rocket />
+                                        <span className="mt-2 text-xs font-black tracking-[0.5em] uppercase">Engage Engine</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Radar View */}
+                        {activeTab === 'radar' && (
+                            <div className="h-full p-6 flex flex-col items-center justify-center animate-in slide-in-from-right duration-300">
+                                <div className="relative w-full aspect-square border border-cyan-900/50 rounded-full overflow-hidden bg-slate-900/20 max-w-[250px]">
+                                    <div className="absolute inset-0 radar-line rounded-full" style={{background: 'linear-gradient(90deg, transparent 50%, rgba(34, 211, 238, 0.2) 100%)'}}></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-1/3 h-1/3 border border-cyan-900/20 rounded-full"></div>
+                                        <div className="w-2/3 h-2/3 border border-cyan-900/20 rounded-full"></div>
+                                    </div>
+                                    <div className="absolute top-1/3 left-1/4 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_#ef4444]"></div>
+                                </div>
+                                <div className="mt-8 text-center">
+                                    <div className="text-[10px] text-cyan-800 font-bold uppercase tracking-widest">Scanning Airspace</div>
+                                    <div className="text-xl font-black text-white mt-1">BKK_SECTOR_V4</div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Navigation Footer */}
+                    <nav className="shrink-0 border-t border-cyan-900/40 bg-slate-900/80 backdrop-blur-lg pb-[var(--sab)]">
+                        <div className="flex justify-around items-stretch h-16">
+                            <button onClick={() => setActiveTab('cockpit')} className={`flex-1 flex flex-col items-center justify-center transition-all ${activeTab === 'cockpit' ? 'tab-active' : 'text-slate-600'}`}>
+                                <Icons.Rocket />
+                                <span className="text-[8px] font-bold mt-1 uppercase tracking-tighter">Cockpit</span>
+                            </button>
+                            <button onClick={() => setActiveTab('radar')} className={`flex-1 flex flex-col items-center justify-center transition-all ${activeTab === 'radar' ? 'tab-active' : 'text-slate-600'}`}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 12l8.5-8.5"/></svg>
+                                <span className="text-[8px] font-bold mt-1 uppercase tracking-tighter">Radar</span>
+                            </button>
+                            <button onClick={() => setShowModal(true)} className="flex-1 flex flex-col items-center justify-center text-slate-600">
+                                <Icons.Github />
+                                <span className="text-[8px] font-bold mt-1 uppercase tracking-tighter">Project</span>
+                            </button>
+                        </div>
+                    </nav>
+
+                    {/* Membership Gate Modal */}
+                    {showModal && (
+                        <div className="absolute inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+                            <div className="glass-panel w-full max-w-sm rounded-3xl p-8 text-center relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent"></div>
+                                <div className="mb-6 flex justify-center text-amber-500">
+                                    <Icons.Alert />
+                                </div>
+                                <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Access Denied</h2>
+                                <p className="text-xs text-cyan-700 leading-relaxed mb-8">
+                                    ฟีเจอร์การควบคุม F-16 Remote สงวนสิทธิ์สำหรับสมาชิก <br/>
+                                    <span className="text-cyan-500 font-bold uppercase tracking-widest mt-2 block">thitnueahub VIP ONLY</span>
+                                </p>
+                                
+                                <div className="space-y-3">
+                                    <a href="https://github.com/ARTHITSIANGWAN/thitnueahub-a2a-f-16-defender-v.2" target="_blank" className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                                        <Icons.Github /> ดูโค้ดบน GITHUB
+                                    </a>
+                                    <button onClick={() => window.open('https://facebook.com', '_blank')} className="w-full py-4 bg-cyan-600 text-slate-950 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all">
+                                        <Icons.Heart /> LIKE & FOLLOW
+                                    </button>
+                                    <button onClick={() => setShowModal(false)} className="text-[10px] text-cyan-900 font-bold uppercase tracking-widest pt-4">
+                                        ปิดหน้าต่าง
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </main>
-                    <footer className="space-y-4 shrink-0 pb-[calc(var(--sab)+24px)] z-10">
-                        <button onClick={() => setIsLocked(!isLocked)} className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.97] border-2 shadow-inner ${isLocked ? 'bg-red-950/10 border-red-900/40 text-red-600' : 'bg-emerald-950/10 border-emerald-900/40 text-emerald-500'}`}>
-                            {isLocked ? <Icons.Lock /> : <Icons.Unlock />}
-                            <span className="text-[10px] font-black tracking-[0.2em] uppercase">{isLocked ? 'Safety: Lock' : 'Safety: Bypass'}</span>
-                        </button>
-                        <button disabled={isLocked} onClick={handleIgnite} className={`w-full py-8 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-[0.95] ${isLocked ? 'bg-slate-900 text-slate-700 border border-slate-800' : 'bg-cyan-600 text-slate-950 shadow-[0_0_40px_rgba(34,211,238,0.3)]'}`}>
-                            <div className={status === 'IGNITING...' ? 'animate-bounce' : ''}><Icons.Rocket /></div>
-                            <span className="mt-2 text-sm font-black tracking-[0.6em] uppercase text-slate-950 font-bold">Start Engine</span>
-                        </button>
-                        <div className="bg-black/60 border border-cyan-900/30 p-2 rounded-lg">
-                            {logs.map((log, i) => (
-                                <div key={i} className={`text-[8px] flex justify-between font-bold leading-relaxed ${i === 0 ? 'text-white' : 'text-cyan-900'}`}>
-                                    <span>{'>'} {log}</span>
-                                    <span>{new Date().toLocaleTimeString()}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </footer>
+                    )}
                 </div>
             );
         };
@@ -137,3 +201,4 @@
 </body>
 </html>
 
+    
