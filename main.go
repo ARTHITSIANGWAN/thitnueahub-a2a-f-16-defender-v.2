@@ -18,16 +18,16 @@ import (
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-// --- 💎 5S Architecture & Models ---
+// --- 💎 5S Architecture & Models (ThitNueaHub Edition) ---
 type Mission struct {
-	Platform   string // "LINE", "FB", "TELEGRAM"
+	Platform   string
 	ReplyToken string
 	Text       string
 	UserID     string
 	Timestamp  time.Time
 }
 
-type ThitNueaEmpire struct {
+type ThitNueaHub struct { // เปลี่ยนชื่อโครงสร้างเป็น ThitNueaHub
 	bot       *linebot.Client
 	db        *firestore.Client
 	missionCh chan Mission
@@ -36,7 +36,7 @@ type ThitNueaEmpire struct {
 }
 
 func main() {
-	log.Println("🐅 [Tiger King]: IGNITE - Trinity Core Online...")
+	log.Println("🐅 [ทิศเหนือ ฮับ]: IGNITE - Trinity Core Online...")
 
 	port := os.Getenv("PORT")
 	if port == "" { port = "8080" }
@@ -44,71 +44,113 @@ func main() {
 
 	// 1. เชื่อมต่อ Firestore
 	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	dbClient, _ := firestore.NewClient(ctx, projectID)
+	dbClient, err := firestore.NewClient(ctx, projectID)
+	if err != nil {
+		log.Printf("⚠️ Firestore Warning: %v", err)
+	}
 	
-	empire := &ThitNueaEmpire{
+	// สร้างตัวแปรในนาม ThitNueaHub
+	hub := &ThitNueaHub{
 		db:        dbClient,
 		missionCh: make(chan Mission, 1000),
 		secret:    os.Getenv("LINE_CHANNEL_SECRET"),
 	}
 
 	// 2. เชื่อมต่อ LINE
-	empire.bot, _ = linebot.New(empire.secret, os.Getenv("LINE_CHANNEL_ACCESS_TOKEN"))
+	lineToken := os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")
+	hub.bot, _ = linebot.New(hub.secret, lineToken)
 
 	// 3. ปล่อยไอ้จอร์จ 10 คนลุยงาน
 	for i := 1; i <= 10; i++ {
-		empire.wg.Add(1)
-		go empire.GeorgeWorker(ctx, i)
+		hub.wg.Add(1)
+		go hub.GeorgeWorker(ctx, i)
 	}
 
-	// 4. ตั้งค่า Triple Webhook (ด่านพรายทอง)
-	http.HandleFunc("/webhook/line", empire.PhraiThongLine)
-	http.HandleFunc("/webhook/facebook", empire.PhraiThongMeta)
-	http.HandleFunc("/webhook/telegram", empire.PhraiThongTelegram)
+	// 4. [ Cockpit ] : เสิร์ฟหน้า UI/UX
+	fs := http.FileServer(http.Dir("./web"))
+	http.Handle("/", fs)
+
+	// 5. [ Phrai Thong Shield ]
+	http.HandleFunc("/webhook/line", hub.PhraiThongLine)
+	http.HandleFunc("/webhook/facebook", hub.PhraiThongMeta)
+	http.HandleFunc("/webhook/telegram", hub.PhraiThongTelegram)
+	http.HandleFunc("/api/surgery", hub.NamIngSurgeryHandler)
+
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "✅ F-16 Trinity: Stable")
+		fmt.Fprint(w, "✅ ThitNueaHub F-16: Stable & Ignite")
 	})
 
+	log.Printf("👑 THITNUEA HUB | 🚀 GLOBAL IGNITE | Port: %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
-// --- 🛡️ Phrai Thong Shield (Handlers) ---
+// --- 🛡️ Phrai Thong Shield (Security & Handlers) ---
 
-func (e *ThitNueaEmpire) PhraiThongLine(w http.ResponseWriter, r *http.Request) {
+func (h *ThitNueaHub) PhraiThongLine(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
-	// ตรวจสอบ Signature (5S Security)
-	hash := hmac.New(sha256.New, []byte(e.secret))
+	hash := hmac.New(sha256.New, []byte(h.secret))
 	hash.Write(body)
-	if base64.StdEncoding.EncodeToString(hash.Sum(nil)) != r.Header.Get("X-Line-Signature") {
+	sig := r.Header.Get("X-Line-Signature")
+	if base64.StdEncoding.EncodeToString(hash.Sum(nil)) != sig {
+		log.Println("🚫 [พรายทอง]: ตรวจพบการบุกรุก! Signature ไม่ตรง")
 		http.Error(w, "Unauthorized", 401); return
 	}
-	events, _ := e.bot.ParseRequest(r)
+
+	r.Body = io.NopCloser(strings.NewReader(string(body)))
+	events, _ := h.bot.ParseRequest(r)
+
 	for _, event := range events {
 		if event.Type == linebot.EventTypeMessage {
 			if msg, ok := event.Message.(*linebot.TextMessage); ok {
-				e.missionCh <- Mission{Platform: "LINE", ReplyToken: event.ReplyToken, Text: msg.Text, UserID: event.Source.UserID}
+				h.missionCh <- Mission{
+					Platform: "LINE", 
+					ReplyToken: event.ReplyToken, 
+					Text: msg.Text, 
+					UserID: event.Source.UserID,
+					Timestamp: time.Now(),
+				}
 			}
 		}
 	}
 	w.WriteHeader(200)
 }
 
-func (e *ThitNueaEmpire) PhraiThongMeta(w http.ResponseWriter, r *http.Request) {
-	// 🤫 [น้ำอิง]: ประตูเมต้าเปิดรับคำสั่งแล้วค่ะ (Logic การแกะ JSON ของ FB จะอยู่ตรงนี้)
+func (h *ThitNueaHub) NamIngSurgeryHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("🎨 [น้ำอิง]: รับคำสั่งจากหน้าแอปทิศเหนือ ฮับ...")
+	w.WriteHeader(200)
+	fmt.Fprint(w, "น้ำอิง: ทิศเหนือ ฮับ จัดการให้เรียบร้อยแล้วค่ะ!")
+}
+
+func (h *ThitNueaHub) PhraiThongMeta(w http.ResponseWriter, r *http.Request) {
+	log.Println("🤫 [Meta]: รับสัญญาณผ่านท่อทิศเหนือ ฮับ")
 	w.WriteHeader(200)
 }
 
-func (e *ThitNueaEmpire) PhraiThongTelegram(w http.ResponseWriter, r *http.Request) {
-	// 🤖 [Optimus]: รับสัญญาณจาก Telegram แล้ว
+func (h *ThitNueaHub) PhraiThongTelegram(w http.ResponseWriter, r *http.Request) {
+	log.Println("🤖 [Optimus]: สัญญาณ Telegram เข้าสู่ทิศเหนือ ฮับ")
 	w.WriteHeader(200)
 }
 
-// --- 🏍️ George Worker (Processing) ---
-func (e *ThitNueaEmpire) GeorgeWorker(ctx context.Context, id int) {
-	defer e.wg.Done()
-	for m := range e.missionCh {
-		log.Printf("🛠️ [ไอ้จอร์จ-%d] รับงานจาก %s: %s", id, m.Platform, m.Text)
-		// บันทึก Firestore & ตอบกลับ (ใส่ Logic น้ำอิงกวนตีนๆ ตรงนี้ได้เลย)
-		e.bot.ReplyMessage(m.ReplyToken, linebot.NewTextMessage("💎 ThitNuea Vision: รับทราบครับ!")).Do()
+// --- 🏍️ George Worker (Processing Unit) ---
+func (h *ThitNueaHub) GeorgeWorker(ctx context.Context, id int) {
+	defer h.wg.Done()
+	for m := range h.missionCh {
+		log.Printf("🛠️ [ไอ้จอร์จ-%d] สกัดความรู้ให้ทิศเหนือ ฮับ: %s", id, m.Text)
+		
+		if h.db != nil {
+			_, _, _ = h.db.Collection("missions").Add(ctx, map[string]interface{}{
+				"user_id":   m.UserID,
+				"text":      m.Text,
+				"platform":  m.Platform,
+				"timestamp": m.Timestamp,
+			})
+		}
+
+		reply := "💎 แก้วตา: ทิศเหนือ ฮับ รับทราบค่ะ! กำลังส่งให้น้ำอิงจัดการนะคะ"
+		if strings.Contains(strings.ToLower(m.Text), "money") {
+			reply = "💰 [Money Mode]: สนใจสนับสนุนทิศเหนือ ฮับ ติดต่อ PayPal.me/arthitsiangwan ครับ!"
+		}
+		
+		h.bot.ReplyMessage(m.ReplyToken, linebot.NewTextMessage(reply)).Do()
 	}
 }
