@@ -20,7 +20,25 @@ import (
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-// --- 💎 5S Architecture & Models (ThitNueaHub Edition) ---
+// --- 💎 โครงสร้าง Gemini 3 Flash ---
+type GeminiRequest struct {
+	Contents []struct {
+		Parts []struct {
+			Text string `json:"text"`
+		} `json:"parts"`
+	} `json:"contents"`
+}
+
+type GeminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
+}
+
 type Mission struct {
 	Platform   string
 	ReplyToken string
@@ -37,98 +55,97 @@ type ThitNueaHub struct {
 	wg        sync.WaitGroup
 }
 
-// โครงสร้างกล่องพัสดุสำหรับส่งเข้า Discord (ท่อตรงไม่ใส่ถุง)
 type DiscordPayload struct {
 	Content  string `json:"content"`
 	Username string `json:"username,omitempty"`
 	Avatar   string `json:"avatar_url,omitempty"`
 }
 
-// --- 🚀 ฟังก์ชันยิงจรวดเข้าท่อ Discord ---
+// --- 🚀 ยิงรายงานเข้าห้องบัญชาการ Discord ---
 func sendToDiscord(message string, agentName string) {
 	webhookURL := os.Getenv("DISCORD_WEBHOOK_URL")
 	if webhookURL == "" {
-		log.Println("⚠️ สถาปนิกเตือน: ท่อ DISCORD_WEBHOOK_URL ยังไม่ได้เชื่อมต่อ!")
 		return
 	}
-
 	payload := DiscordPayload{
 		Content:  message,
 		Username: agentName,
-		Avatar:   "https://cdn-icons-png.flaticon.com/512/4712/4712109.png", // รูปโปรไฟล์เท่ๆ
+		Avatar:   "https://cdn-icons-png.flaticon.com/512/4712/4712109.png",
 	}
+	jsonData, _ := json.Marshal(payload)
+	http.Post(webhookURL, "application/json", bytes.NewBuffer(jsonData))
+}
+
+// --- ⚡ หัวใจ Gemini 3: แกะเจ้าตาก ---
+func askGemini(prompt string) string {
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		return "⚠️ กุญแจหาย! กรุณาเช็ก Secret Manager"
+	}
+	// ใช้โมเดล Flash ตัวแรง
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey
+
+	payload := GeminiRequest{}
+	payload.Contents = append(payload.Contents, struct {
+		Parts []struct {
+			Text string `json:"text"`
+		} `json:"parts"`
+	}{})
+	payload.Contents[0].Parts = append(payload.Contents[0].Parts, struct {
+		Text string `json:"text"`
+	}{Text: "จงแกะเจ้าตากจากข้อความนี้: " + prompt})
 
 	jsonData, _ := json.Marshal(payload)
-	req, _ := http.NewRequest("POST", webhookURL, bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Printf("❌ ยิง Discord พลาด: %v\n", err)
-		return
+		return "❌ เชื่อมต่อ Gemini พลาด"
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		log.Printf("⚠️ Discord ตอบกลับผิดปกติ: %s\n", resp.Status)
+	body, _ := io.ReadAll(resp.Body)
+	var geminiResp GeminiResponse
+	json.Unmarshal(body, &geminiResp)
+
+	if len(geminiResp.Candidates) > 0 && len(geminiResp.Candidates[0].Content.Parts) > 0 {
+		return geminiResp.Candidates[0].Content.Parts[0].Text
 	}
+	return "💎 แก้วตา: กำลังประมวลผลแรงเกินไป หรือ API Key มีปัญหาค่ะ"
 }
 
 func main() {
-	log.Println("🐅 [ทิศเหนือ ฮับ]: IGNITE - Trinity Core Online...")
-
+	log.Println("🐅 [ทิศเหนือ ฮับ]: IGNITE - Full Power Online...")
 	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	if port == "" { port = "8080" }
 	ctx := context.Background()
 
-	// 1. เชื่อมต่อ Firestore (สะสาง 5ส)
 	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	dbClient, err := firestore.NewClient(ctx, projectID)
-	if err != nil {
-		log.Printf("⚠️ Firestore Warning: (ยังไม่สมยอมกับพี่อ้วน) %v", err)
-	}
+	dbClient, _ := firestore.NewClient(ctx, projectID)
 
 	hub := &ThitNueaHub{
 		db:        dbClient,
-		missionCh: make(chan Mission, 1000),
+		missionCh: make(chan Mission, 10000), // 🔥 ขยายคิวเป็น 10,000 รับงานหมื่นครั้ง
 		secret:    os.Getenv("LINE_CHANNEL_SECRET"),
 	}
 
-	// 2. เชื่อมต่อ LINE
 	lineToken := os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")
 	hub.bot, _ = linebot.New(hub.secret, lineToken)
 
-	// แจ้งเตือนเข้าห้องบัญชาการว่าระบบพร้อมรบ!
-	sendToDiscord("🚀 **[SYSTEM IGNITE]** ThitNueaHub F-16 พร้อมทะยานเข้าสู่ Matrix แล้วเจ้านาย!", "🐅 ทิศเหนือ ฮับ (System)")
+	sendToDiscord("🚀 **[SYSTEM REIGNITE]** F-16 V.2 พร้อมถลุงงบ 9,000 แล้วเจ้านาย!", "🐅 ทิศเหนือ ฮับ (Core)")
 
-	// 3. ปล่อยไอ้จอร์จ 10 คนลุยงาน
-	for i := 1; i <= 10; i++ {
+	// ปล่อยคนงาน ไอ้จอร์จ 15 คน (เบิ้ลให้ไวขึ้น)
+	for i := 1; i <= 15; i++ {
 		hub.wg.Add(1)
 		go hub.GeorgeWorker(ctx, i)
 	}
 
-	// 4. [ Cockpit ] : เสิร์ฟหน้า UI/UX
-	fs := http.FileServer(http.Dir("./web"))
-	http.Handle("/", fs)
-
-	// 5. [ Phrai Thong Shield ]
 	http.HandleFunc("/webhook/line", hub.PhraiThongLine)
-	http.HandleFunc("/webhook/facebook", hub.PhraiThongMeta)
-	http.HandleFunc("/webhook/telegram", hub.PhraiThongTelegram)
 	http.HandleFunc("/api/surgery", hub.NamIngSurgeryHandler)
-
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "✅ ThitNueaHub F-16: Stable & Ignite")
+		fmt.Fprint(w, "✅ F-16: Active & Heavy Loaded")
 	})
 
-	log.Printf("👑 THITNUEA HUB | 🚀 GLOBAL IGNITE | Port: %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-// --- 🛡️ Phrai Thong Shield (Security & Handlers) ---
 
 func (h *ThitNueaHub) PhraiThongLine(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
@@ -136,23 +153,17 @@ func (h *ThitNueaHub) PhraiThongLine(w http.ResponseWriter, r *http.Request) {
 	hash.Write(body)
 	sig := r.Header.Get("X-Line-Signature")
 	if base64.StdEncoding.EncodeToString(hash.Sum(nil)) != sig {
-		log.Println("🚫 [พรายทอง]: ตรวจพบการบุกรุก! Signature ไม่ตรง")
 		http.Error(w, "Unauthorized", 401)
 		return
 	}
-
 	r.Body = io.NopCloser(strings.NewReader(string(body)))
 	events, _ := h.bot.ParseRequest(r)
-
 	for _, event := range events {
 		if event.Type == linebot.EventTypeMessage {
 			if msg, ok := event.Message.(*linebot.TextMessage); ok {
 				h.missionCh <- Mission{
-					Platform:   "LINE",
-					ReplyToken: event.ReplyToken,
-					Text:       msg.Text,
-					UserID:     event.Source.UserID,
-					Timestamp:  time.Now(),
+					Platform: "LINE", ReplyToken: event.ReplyToken,
+					Text: msg.Text, UserID: event.Source.UserID, Timestamp: time.Now(),
 				}
 			}
 		}
@@ -161,46 +172,27 @@ func (h *ThitNueaHub) PhraiThongLine(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ThitNueaHub) NamIngSurgeryHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("🎨 [น้ำอิง]: รับคำสั่งจากหน้าแอปทิศเหนือ ฮับ...")
-	sendToDiscord("🎨 **[น้ำอิง]** ได้รับคำสั่งผ่าตัด (Surgery) จากหน้าแอปแล้วค่ะเจ้านาย!", "🧑‍🎨 น้ำอิง")
-	w.WriteHeader(200)
-	fmt.Fprint(w, "น้ำอิง: ทิศเหนือ ฮับ จัดการให้เรียบร้อยแล้วค่ะ!")
+	sendToDiscord("🎨 **[น้ำอิง]** กำลังผ่าตัดระบบให้สดใสค่ะ!", "🧑‍🎨 น้ำอิง")
+	fmt.Fprint(w, "น้ำอิง: ผ่าตัดเรียบร้อย!")
 }
 
-func (h *ThitNueaHub) PhraiThongMeta(w http.ResponseWriter, r *http.Request) {
-	log.Println("🤫 [Meta]: รับสัญญาณผ่านท่อทิศเหนือ ฮับ")
-	w.WriteHeader(200)
-}
-
-func (h *ThitNueaHub) PhraiThongTelegram(w http.ResponseWriter, r *http.Request) {
-	log.Println("🤖 [Optimus]: สัญญาณ Telegram เข้าสู่ทิศเหนือ ฮับ")
-	w.WriteHeader(200)
-}
-
-// --- 🏍️ George Worker (Processing Unit) ---
 func (h *ThitNueaHub) GeorgeWorker(ctx context.Context, id int) {
 	defer h.wg.Done()
 	for m := range h.missionCh {
-		log.Printf("🛠️ [ไอ้จอร์จ-%d] สกัดความรู้ให้ทิศเหนือ ฮับ: %s", id, m.Text)
-		
-		// ยิงรายงานเข้า Discord ให้เจ้านายรู้แบบ Real-time
-		discordReport := fmt.Sprintf("📡 **[สัญญาณจาก %s]**\n👤 ผู้ใช้: `%s`\n💬 ข้อความ: *%s*", m.Platform, m.UserID, m.Text)
-		sendToDiscord(discordReport, "🕵️ แก้วตา (ศูนย์บัญชาการ)")
+		// 🚀 เบิ้ลพลัง Gemini 3 Flash
+		result := askGemini(m.Text)
 
+		// รายงาน Discord Real-time
+		report := fmt.Sprintf("📡 **[ไอ้จอร์จ-%d]**\n👤 User: `%s`\n💬 แกะได้: %s", id, m.UserID, result)
+		sendToDiscord(report, "🕵️ แก้วตา")
+
+		// ลงถัง Firestore (Disk 100GB ของพี่)
 		if h.db != nil {
-			_, _, _ = h.db.Collection("missions").Add(ctx, map[string]interface{}{
-				"user_id":   m.UserID,
-				"text":      m.Text,
-				"platform":  m.Platform,
-				"timestamp": m.Timestamp,
+			h.db.Collection("missions").Add(ctx, map[string]interface{}{
+				"user_id": m.UserID, "text": m.Text, "result": result,
+				"platform": m.Platform, "timestamp": m.Timestamp,
 			})
 		}
-
-		reply := "💎 แก้วตา: ทิศเหนือ ฮับ รับทราบค่ะ! กำลังส่งให้น้ำอิงจัดการนะคะ"
-		if strings.Contains(strings.ToLower(m.Text), "money") {
-			reply = "💰 [Money Mode]: สนใจสนับสนุนทิศเหนือ ฮับ ติดต่อ PayPal.me/arthitsiangwan ครับ!"
-		}
-		
-		h.bot.ReplyMessage(m.ReplyToken, linebot.NewTextMessage(reply)).Do()
+		h.bot.ReplyMessage(m.ReplyToken, linebot.NewTextMessage(result)).Do()
 	}
 }
