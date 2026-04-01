@@ -2,3 +2,12 @@
 *.ipynb linguist-vendored
 *.ipynb linguist-detectable=false
 
+# บล็อกโฟลเดอร์ notebooks และไฟล์ ipynb
+notebooks/** linguist-vendored
+*.ipynb linguist-vendored
+*.ipynb linguist-detectable=false
+
+# บล็อกไฟล์ HTML/CSS/JS (ถ้าอยากให้ Go เด่น 100%)
+*.html linguist-detectable=false
+*.css linguist-detectable=false
+*.js linguist-detectable=false
