@@ -1,0 +1,4 @@
+# บอก GitHub ว่าไม่ต้องเอา Notebook มานับเป็นภาษาหลัก
+*.ipynb linguist-vendored
+*.ipynb linguist-detectable=false
+
