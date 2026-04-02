@@ -1,23 +1,23 @@
-// [ThitNueaHub Relay Protocol]
-function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var message = data.message; // รับประโยคเดียวจากเจ้านาย
+// ในตัวแปรสถานะ
+const [randomCode, setRandomCode] = useState("0000");
 
-  // ส่งต่อให้ "แก้วตา" วิเคราะห์ผ่าน Gemini API
-  var response = analyzeWithKaewTa(message); 
-  
-  // ยิงผลลัพธ์กลับไปที่ Discord Webhook
-  sendToDiscord(response);
-  
-  return ContentService.createTextOutput("Ignite Success!");
-}
+useEffect(() => {
+    if (status === 'F-16 ONLINE') {
+        const interval = setInterval(() => {
+            setRandomCode(Math.random().toString(16).substring(2, 6).toUpperCase());
+        }, 100);
+        return () => clearInterval(interval);
+    }
+}, [status]);
 
-function sendToDiscord(content) {
-  var url = "URL_WEBHOOK_ของเจ้านาย";
-  var options = {
-    "method": "post",
-    "contentType": "application/json",
-    "payload": JSON.stringify({"content": content})
-  };
-  UrlFetchApp.fetch(url, options);
-}
+// ในส่วนการแสดงผล Cockpit
+<div className="text-center">
+    {status === 'F-16 ONLINE' && (
+        <div className="text-[10px] text-cyan-500 mb-2 tracking-[0.5em] animate-pulse">
+            DECRYPTING: {randomCode}
+        </div>
+    )}
+    <div className={`text-4xl font-black tracking-widest uppercase italic ${status === 'STANDBY' ? 'text-slate-800' : 'text-cyan-400 glow-cyan'}`}>
+        {status}
+    </div>
+</div>
